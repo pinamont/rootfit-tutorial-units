@@ -13,7 +13,7 @@ Using git:
   * connect to lxplus or INFN ts farm with ssh via terminal
   * clone the git project:
 ```
-git clone ... RooFitTutorial
+git clone https://github.com/pinamont/rootfit-tutorial-units.git RooFitTutorial
 ```
   * move to the `RooFitTutorial` directory
   * run the setup script:
@@ -235,6 +235,43 @@ RooFitResult *r = extModel.fitTo(data,RooFit::Save(true));
 and then print the content of it at the end of the macro:
 ```C++
 r->Print();
+```
+
+### Hello World unbinned
+
+Let's try to do the same as in the Hello-World but leaving the likelihood unbinned.
+
+```C++
+void HelloWorld_Unbinned(){
+    
+    RooRealVar x("x","Observable",-10,10);
+    RooRealVar mean("mean","B0 mass",0.00027,-10,10,"GeV");
+    RooRealVar sigma("sigma","B0 width",5.2794,0,10,"GeV");
+    RooGaussian model("model","signal pdf",x,mean,sigma);
+    
+    TCanvas *c = new TCanvas("c","c",800,600);
+    RooPlot *xframe = x.frame();
+    
+    RooDataSet data(*model.generate(x,100));
+    data.plotOn(xframe);
+    
+    model.plotOn(xframe);
+    
+    model.fitTo(data);
+    
+    xframe->Draw();
+    c->SaveAs("HelloWorld.png");
+```
+
+One can compare the results with the binned case.
+
+One can also inspect the generated toy data one by one:
+```C++
+data.Print("V");
+for(int i=0;i<data.numEntries();i++){
+    data.get(i)->Print("V");
+}
+```
 
 
 ---
@@ -274,41 +311,36 @@ RooWorkspace *w = (RooWorkspace*)_file0->Get("w");
 w->Print();
 ```
 
-
 ---
 
-## Unbinned data and likelihood fits
+## PDF composition
 
-### Hello World unbinned
-
+Let's build a simple signal-plus-background model.
+Take the code used already for the Hello-World example, but give to the Gaussian PDF a different name:
 ```C++
-void HelloWorld_Unbinned(){
-    
-    RooRealVar x("x","Observable",-10,10);
-    RooRealVar mean("mean","B0 mass",0.00027,-10,10,"GeV");
-    RooRealVar sigma("sigma","B0 width",5.2794,0,10,"GeV");
-    RooGaussian model("model","signal pdf",x,mean,sigma);
-    
-    TCanvas *c = new TCanvas("c","c",800,600);
-    RooPlot *xframe = x.frame();
-    
-    RooDataSet data(*model.generate(x,100));
-    data.plotOn(xframe);
-    
-    model.plotOn(xframe);
-    
-    model.fitTo(data);
-    
-    xframe->Draw();
-    c->SaveAs("HelloWorld.png");
+RooGaussian model_sig("model_sig","signal pdf",x,mean,sigma);
+```
+and add a new PDF for our background:
+```C++
+RooRealVar t("t","slope",-1.,-10.,0.);
+RooExponential model_bkg("model_bkg","background pdf",x,t);
+```
+Now declare parameters for the fractions of signal and background:
+```C++
+RooRealVar s_frac("s_frac","signal fraction",0.1);
+RooRealVar b_frac("b_frac","background fraction",0.9);
+```
+and finally create the composite model:
+```C++
+RooAddPdf model("model","model_sig+model_bkg",RooArgList(model_sig,model_bkg),RooArgList(s_frac,b_frac));
 ```
 
-One can compare the results with the binned case.
+Now try to fit it in the usual way.
 
-One can also inspect the generated toy data one by one:
-```C++
-data.Print("V");
-for(int i=0;i<data.numEntries();i++){
-    data.get(i)->Print("V");
-}
-```
+What do you get?
+
+Do you get fitted values also for the fractions of signal and background?
+
+How to fit the fractions as well?
+
+Exercise: turn this new model into a fully extended likelihood model, where the number of signal and background events are fitted and given as results of the fit, together with the PDF parameters.
