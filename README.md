@@ -9,8 +9,30 @@ Dr. Michele Pinamonti
 
 ## Setup
 
-  * clone the git project
-  * run the setup script
+Using git:
+  * connect to lxplus or INFN ts farm with ssh via terminal
+  * clone the git project:
+```
+git clone ... RooFitTutorial
+```
+  * move to the `RooFitTutorial` directory
+  * run the setup script:
+```
+source setup.sh
+```
+
+Alternatively, without cloning the git project:
+  * connect to lxplus or INFN ts farm with ssh via terminal
+  * create a directory `RooFitTutorial`
+  * create a `setup.sh` text file inside the directory with the following content:
+```
+source /cvmfs/sft.cern.ch/lcg/app/releases/ROOT/6.20.04/x86_64-centos7-gcc48-opt/bin/thisroot.sh 
+alias macro="root -l -b -q"
+```
+  * from inside the directory `RooFitTutorial` run the setup script:
+```
+source setup.sh
+```
 
   
 ---
@@ -204,7 +226,15 @@ Now let's try to run the fit again, and look at the fitted value of `nsig`.
 
 ### Getting fit results
 
-...
+It is often useful to store the results of the fit in a proper `RooFit` objetc, a `RooFitResult`.
+To do it, when performing the fit, one needs to add the option `Save(true)`, and the fit method will return a pointer to the `FitResult` object.
+We can add to any of the previous macros (for instance the latest one) the following line:
+```C++
+RooFitResult *r = extModel.fitTo(data,RooFit::Save(true));
+```
+and then print the content of it at the end of the macro:
+```C++
+r->Print();
 
 
 ---
