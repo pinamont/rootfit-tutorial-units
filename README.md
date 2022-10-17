@@ -417,7 +417,8 @@ Now as exercise:
   * load the two datasets from the workspace (e.g. `w->data("data_Bonly")`) and plot each of them in the proper `RooPlot`;
   * plot each of the plots to a separate sub-canvas (hint: call `c->cd(1)` before calling `xframe1->Draw()` and `c->cd(1)` before calling `xframe2->Draw()`;
   * perform 2 fits:
-    * the B-only data should be fitted with a B-only model, i.e. by fixing all the signal parameters (and its normalization to zero), e.g.:
+
+1. the B-only data should be fitted with a B-only model, i.e. by fixing all the signal parameters (and its normalization to zero), e.g.:
 ```C++
     w->var("n_sig")->setVal(0.);
     w->var("n_sig")->setConstant(true);
@@ -425,11 +426,12 @@ Now as exercise:
     w->var("sigma")->setConstant(true);
     pdf->fitTo(*w->data("data_Bonly"),RooFit::Extended());
 ```
-      * don't forget the good practice to call `w->loadSnapshot("SplusB_0")` before setting these (NB: not *after*);
-      * notice the option `RooFit::Extended()`, added to make sure the fit is performed in the "extended likelihood" mode (can try to remove it and see what happens);
-    * the S+B data should be fitted with a S+B model, i.e. by leaving free-floating fixing all the signal parameters (hint: `w->loadSnapshot("SplusB_0");` could help);
-    * the model after the B-only fit should be plotted to `xframe1` and the second fit to `xframe2`;
-  * finally save the canvas:
+  * don't forget the good practice to call `w->loadSnapshot("SplusB_0")` before setting these (NB: not *after*);
+  * notice the option `RooFit::Extended()`, added to make sure the fit is performed in the "extended likelihood" mode (can try to remove it and see what happens);
+2. the S+B data should be fitted with a S+B model, i.e. by leaving free-floating fixing all the signal parameters (hint: `w->loadSnapshot("SplusB_0");` could help);
+  * the model after the B-only fit should be plotted to `xframe1` and the second fit to `xframe2`;
+
+Finally save the canvas:
 ```C++
     c->SaveAs("myExample.png");
 ```
