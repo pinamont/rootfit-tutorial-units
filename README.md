@@ -175,18 +175,19 @@ Alternatively, one can call the individual steps of the fit procedure individual
   * create a negative-log-likelihood object, from the model applied to the data (remind: `RooAbsReal` is a generic "function" in the RooFit language):
 ```C++
 RooAbsReal *nll = model.createNLL(data);
+RooMinimizer m(*nll);
 ```
   * call the minimization process ("Migrad"):
 ```C++
-nll->migrad();
+m.migrad();
 ```
   * call a proper method to get the (approximate) uncertainties on the estimated parameters using estimated second derivatives at the NLL minimum ("Hesse"): 
 ```C++
-nll->hesse();
+m.hesse();
 ```
   * eventually call another function to get more accurate estimates of the uncertainties by scanning the Likelihood function, eventually catchning asymmetric errors ("Minos"):
 ```C++
-nll->minos();
+m.minos();
 ```
 
 (A bit of discussion on why one needs to call Hesse and Minos after Migrad can be found here: http://www.fresco.org.uk/minuit/cern/node32.html).
