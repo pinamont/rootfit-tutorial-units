@@ -454,6 +454,8 @@ Additional cosmetics to make your plot nicer:
 
 
 
+---
+
 
 ### Histogram PDFs and categories
 
@@ -629,3 +631,58 @@ Finally, before re-doing the fit, set the original parameters like `n_sig_SR` to
 and similarly for the other 3 parameters.
 
 Now, let's redo the fit and look at the result.
+
+---
+
+To finish, so more cosmetics.
+
+One can print the results of the fit in a cleaner way with:
+```C++
+    cout << endl;
+    cout << "+-------------------------------+" << endl;
+    cout << "|             RESULTS           |" << endl;
+    cout << "+-------------------------------+" << endl;
+    cout << "  mu(S) = " << mu_sig.getVal() << " +/- " << mu_sig.getError() << endl;
+    cout << endl;
+```
+
+In terms of plots, one should look at the post-fit plots, e.g. by creating a new `RooPlot`:
+```C++
+    RooPlot *xframe_SR_postFit = x.frame();
+    xframe_SR_postFit->SetTitle("SR (post-fit)");
+    xframe_SR_postFit->GetYaxis()->SetTitle("Number of events");
+    model_SR.plotOn(xframe_SR_postFit,
+                    RooFit::Normalization(1.,RooAbsReal::RelativeExpected));
+```
+and the same for the CR.
+Then one can save these post-fit plots to a new `TCanvas`, called for example "Binned_postFit.png".
+
+Even more fancy, we can plot the background component in the plots individually:
+```C++
+    model_SR.plotOn(xframe_SR_postFit,RooFit::Components(model_bkg_SR),
+                    RooFit::LineStyle(kDashed),RooFit::LineColor(kRed),
+                    RooFit::Normalization(1.,RooAbsReal::RelativeExpected));
+```
+You can do it for all the plots, including the pre-fit ones, and see how plots look like.
+
+Finally, for the post-fit plots only, one can even show the "post-fit error" on the model, by doing something like this:
+```C++
+    model_CR.plotOn(xframe_CR_postFit,
+                    RooFit::VisualizeError(*r, 1),
+                    RooFit::Normalization(1.,RooAbsReal::RelativeExpected)
+                    );
+```
+Notice that this needs to be done **before** the model is plotted, so you should have something like this:
+```C++
+    model_CR.plotOn(xframe_CR_postFit,
+                    RooFit::VisualizeError(*r, 1),
+                    RooFit::Normalization(1.,RooAbsReal::RelativeExpected)
+                    );
+    model_CR.plotOn(xframe_CR_postFit,
+                    RooFit::Normalization(1.,RooAbsReal::RelativeExpected));
+    model_CR.plotOn(xframe_CR_postFit,RooFit::Components(model_bkg_CR),
+                    RooFit::LineStyle(kDashed),RooFit::LineColor(kRed),
+                    RooFit::Normalization(1.,RooAbsReal::RelativeExpected)
+                    );
+```
+
