@@ -603,3 +603,29 @@ You can simply call `model.fitTo(data)` but you need to save the results into a 
 What do we get?
 Which parameters got fitted?
 Is it useful to have a control region in this case?
+
+---
+
+The answer is actually "no".
+Indeed, the signal and background yields are free-floating independently in the SR and in the CR, so in this way the CR is actually useless.
+What we can do, is to link these parameters controlling the yield.
+To do it, let's create other parameters, that will scale the signal and the background coherently in all the regions:
+```C++
+    RooRealVar mu_sig("mu_sig","mu_sig",1,-10,10);
+    RooRealVar mu_bkg("mu_bkg","mu_bkg",1,-10,10);
+```
+And now, let's redefine the signal and background yields so that they are "N * mu", i.e.:
+```C++
+    RooFormulaVar mu_n_sig_SR("mu_n_sig_SR","mu_sig*n_sig_SR",RooArgList(mu_sig,n_sig_SR));
+```
+and other 3 lines for background and control region.
+
+Now, let's modify the definition of the two original models in the two regions, so that they take these new parameters as normalizations for signal and background, so let's replace `n_sig_S` with `mu_n_sig_SR` and similarly all the other cases, in the definitions of `model_SR` and `model_CR`.
+
+Finally, before re-doing the fit, set the original parameters like `n_sig_SR` to constant, leaving only the "mu" parameters free to float in the fit:
+```C++
+    n_sig_SR.setConstant(true);
+```
+and similarly for the other 3 parameters.
+
+Now, let's redo the fit and look at the result.
