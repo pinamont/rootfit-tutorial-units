@@ -530,9 +530,15 @@ Then, we want to create 2 models, one for the SR and one for the CR.
 To to it (since they need to be extended models), we need to create 4 variables, for the number of events of signal and background in the 2 regions.
 So let's add this line:
 ```C++
-    RooRealVar n_sig_SR("n_sig_SR","n_sig_SR",1,0,10);
+    RooRealVar n_sig_SR("n_sig_SR","n_sig_SR",1,0,1000);
 ```
 and other corresponding ones for `n_bkg_SR`, `n_sig_CR` and `n_bkg_CR`.
+Important: 
+let's set the initial values of these parameters to sensible numbers, and the best is to set them to the integrals of the histograms we created before, so:
+```C++
+    n_sig_SR.setVal(h_sig_SR->Integral());
+```
+and corresponding lines for the other 3 parameters.
 
 At this point we can create the extended models for SR and CR:
 ```C++
