@@ -4,10 +4,18 @@ University of Trieste, October 2022
 
 Dr. Michele Pinamonti 
 
+---
+
+## Table of contents
+1. [Setup](#setup)
+2. [Getting started](#getting_started)
+3. [RooFit basics](#basics)
+4. [Advanced examples](#advanced)
+5. [Profile Likelihood fit and HistFactory](#histfactory)
 
 ---
 
-## Setup
+## Setup <a name="setup"></a>
 
 Using git:
   * connect to lxplus or INFN ts farm with ssh via terminal
@@ -34,10 +42,10 @@ alias macro="root -l -b -q"
 source setup.sh
 ```
 
-  
+
 ---
 
-## Getting started
+## Getting started <a name="getting_started"></a>
 
 
 ### ROOT Hello World
@@ -163,7 +171,8 @@ model.fitTo(data);
 
 ---
 
-## Basic RooFit operations
+
+## RooFit basics <a name="basics"></a>
 
 
 ### Performing the fit step by step
@@ -344,6 +353,12 @@ How to fit the fraction of signal as well?
 **Exercise 2**: turn this new model into a fully extended likelihood model, where the number of signal and background events are fitted and given as results of the fit, together with the PDF parameters.
 
 
+---
+
+
+## Advanced examples <a name="advanced"></a>
+
+
 ### A nicer example
 
 Let's take what we learned and build a new example, with a couple of extra ingredients.
@@ -453,10 +468,6 @@ Additional cosmetics to make your plot nicer:
 ```
 
 
-
----
-
-
 ### Histogram PDFs and categories
 
 Now let's see an example on how to create a binned PDF, starting from a histogram, and how to split into categories, for instance signal and control samples/regions.
@@ -525,8 +536,6 @@ We can do it by adding:
     channel.defineType("CR", 0);
     channel.defineType("SR", 1);
 ```
-
-<!-- Now, create 2 parameters, called `mu_sig` and `mu_bkg`, with range (-10, 10) and nominal value 1. -->
 
 Then, we want to create 2 models, one for the SR and one for the CR.
 To to it (since they need to be extended models), we need to create 4 variables, for the number of events of signal and background in the 2 regions.
@@ -606,7 +615,6 @@ What do we get?
 Which parameters got fitted?
 Is it useful to have a control region in this case?
 
----
 
 The answer is actually "no".
 Indeed, the signal and background yields are free-floating independently in the SR and in the CR, so in this way the CR is actually useless.
@@ -632,7 +640,6 @@ and similarly for the other 3 parameters.
 
 Now, let's redo the fit and look at the result.
 
----
 
 To finish, so more cosmetics.
 
@@ -686,3 +693,282 @@ Notice that this needs to be done **before** the model is plotted, so you should
                     );
 ```
 
+
+### Constraints and nuisance parameters
+
+Let's move one step further and see how we can define constrained (nuisance) parameters in a likelihood.
+Let's start with a simple model, like the one used for the first HelloWorld example:
+```C++
+void Example_NPs(){
+    RooWorkspace *w = new RooWorkspace("w");
+    
+    TCanvas *c = new TCanvas("c","c",800,600);
+    
+    RooRealVar x("x","Observable",-10,10);
+    RooRealVar mean("mean","B0 mass",0.00027,-10,10,"GeV");
+    RooRealVar sigma("sigma","B0 width",5.2794,0,10,"GeV");
+    RooGaussian model("model","signal pdf",x,mean,sigma);
+    
+    x.setBins(10);
+    RooDataHist data(*model.generateBinned(x,100));
+    
+    w->import(data);
+    w->import(model);
+    
+    w->saveSnapshot("Vanilla",w->allVars());
+    
+    RooFitResult *r = model.fitTo(data,RooFit::Save(),
+                                  RooFit::PrintLevel(-1),RooFit::PrintEvalErrors(-1));
+    r->Print();
+}
+```
+(notice that we used the `RooFit::PrintLevel(-1)` and `RooFit::PrintEvalErrors(-1)` option to make the fit silent)
+
+What we want to do now is to apply a Gaussian constraint to the parameter `sigma`, to represent the fact that we have some prior knowledge on it, for instance from a previous measurement or a theory prediction.
+
+In RooFit, we have two possible ways to proceed:
+  * we build a model that includes a Gaussian constrain term;
+  * we add the constraint only when we perform the fit, as "external constraint".
+  
+Let's see how to proceed in the first way.
+Note: we can add code at the end of the previous macro this time.
+We need to create a new PDF, a Gaussian in this case, where the observable is this time not `x`, but `sigma`. 
+We then set the mean of this Gaussian to the nominal value for `sigma` and its standard deviation to the uncertainty on the prior measurement / theory prediction for `sigma`:
+```C++
+    RooGaussian constr("constr", "constr", sigma, RooFit::RooConst(5.2794), RooFit::RooConst(0.2));
+```
+
+We can then build a new model, as the product of the previous plain model times the constraint term we just created:
+```C++
+    RooProdPdf modelc("modelc","signal pdf (with constraint)",RooArgSet(model,constr));
+```
+
+Let's then do, as **exercise**:
+  * import the new model in the workspace;
+  * load the previously saves snapshot;
+  * perform a new fit, in the same way as before, by creating a new `FitResult` object, and printing the output. 
+
+We can then rerun the code and compare the outputs of the first and the second fit.
+Are the results different?
+Are the uncertainties (on `sigma` and `mean`) changed?
+
+Now let's give a look at the second method. 
+Again we can safely add code at the end of what we have already.
+Since we already created the constraint term, we can re-use it.
+Now, as **exercise** will simply perform the fit with the *plain* model, and we will add the constraint term simply by adding the option `RooFit::ExternalConstraints(constr)` to the `fitTo` method.
+Important: don't forget to load the snapshot before fitting!
+
+We can now compare the results of the fits. 
+Are we getting the same results?
+
+
+---
+
+
+## Profile Likelihood fit and HistFactory <a name="histfactory"></a>
+
+This new section is about the usage of HistFactory.
+
+
+### Getting started
+
+Let's first create two directories, to store the workspace and the xml steering files created by HistFactory:
+```bash
+mkdir ws
+mkdir xml
+```
+
+Then let's generate the histograms.
+To do it, download (or copy) the macro `CreateHistograms.C` and run it, with:
+```bash
+macro CreateHistograms.C
+```
+
+A directory `ExampleInputs` should have been created, with a number of root files inside.
+
+
+### Simple workspace creation
+
+We will create a simple example workspace based on histogram inputs (that we will create with a dummy ROOT macro).
+
+
+Our likelihood model, and the meaning we give to it, is stored within a measurement - an HistFactory concept which needs to know:
+  * how we want to nickname it;
+  * where output files should be stored;
+  * what's the parameter of interest (POI) of this measurement;
+  * what are the parameters to be considered as a constant, if any - we typically include the default luminosity nuisance parameter created by HistFactory, called Lumi, within this "blacklist";
+  * what are the default settings of the default luminosity parameter, used by HistFactory whenever you specify that a channel should be normalized by luminosity (see `SetNormalizeByTheory`).
+  
+We are also nice people who like to decouple logical steps, so we ask HistFactory to kindly not do anything else than exporting the workspace into a ROOT file (i.e. please HistFactory do not perform any statistical analysis without our consent).
+
+Create the measurement object, set prefix for outputs, set parameter of interest (POI), 
+set the "export-only" flag, with this sample macro:
+```C++
+using namespace RooFit;
+using namespace RooStats;
+using namespace HistFactory;
+
+void CreateSimpleWS(){
+    Measurement *meas = new Measurement("ws_minimal","ws_minimal");
+    
+    meas->SetOutputFilePrefix("ws/ICTPws_minimal");
+
+    meas->SetPOI("mu_ttH");
+    
+    meas->SetExportOnly(true);
+}
+```
+
+We also add the "luminosity" uncertainty here, which will affect all the signal and background samples:
+```C++
+    meas->SetLumi(1.0);
+    meas->SetLumiRelErr(0.05);
+```
+
+We then follow this logic:
+  * we first create a channel (corresponding to some set of statistically-independent data);
+  * we tell HistFactory where (meaning: in which file, under which subdirectory path and more specifically in which histogram) to find the data for this channel;
+<!--   * we may indulge in specifying how uncertainties related to the limited MC statistics in signal/background histograms should be dealt with, in this channel; -->
+  * we then add the samples which contribute to this channel, specifying where to find their nominal histograms, and which normalisation-only (AddOverallSys) and also-shape uncertainties (AddHistoSys) should be considered (keeping in mind that variations of any kind which share the same name are correlated);
+  * we also add free parameters to fit for determining the normalisation of our signal (and sometimes background) samples;
+  * we add each sample to the channel.
+  
+Create the channel:
+```C++
+    Channel *chan_sr = new Channel("SR");
+```
+
+Set the data, set MC-stat uncertainty threshold to 5%:
+```C++
+    chan_sr->SetData( "HTj", "ExampleInputs/data.root" );
+    chan_sr->SetStatErrorConfig(0.05, "Poisson");
+```
+
+Add signal sample, adding the POI as normalization factor to it:
+```C++
+    Sample *signal_sr = new Sample( "S", "HTj", "ExampleInputs/sig.root" );
+    signal_sr->AddNormFactor( "mu_signal", 1, -10, 10 );
+```
+
+Add the background samples:
+```C++
+    Sample *bkg1_sr = new Sample( "B1", "HTj", "ExampleInputs/bkg1.root" );
+    Sample *bkg2_sr = new Sample( "B2", "HTj", "ExampleInputs/bkg2.root" );
+```
+    
+Assign some simple systematic uncertainties.
+Cross-section uncertainties on the two background processes:
+```C++
+    bkg1_sr->AddOverallSys( "XS_bkg1",  0.90, 1.10 );
+    bkg2_sr->AddOverallSys( "XS_bkg2",  0.70, 1.30 );
+```
+Then a shape uncertainty affecting the signal and one of the background samples:
+```C++
+    signal_sr->AddHistoSys( "JES", "HTj_jesDown","ExampleInputs/sig.root","",
+                                   "HTj_jesUp","ExampleInputs/sig.root","");
+    bkg1_sr->AddHistoSys( "JES", "HTj_jesDown","ExampleInputs/bkg1.root","",
+                                 "HTj_jesUp","ExampleInputs/bkg1.root","");
+```
+
+Add samples to channel:
+```C++
+    chan_sr->AddSample( *signal_sr );
+    chan_sr->AddSample( *bkg1_sr );
+    chan_sr->AddSample( *bkg2_sr );
+```
+and channel to measurement:
+```C++
+    meas->AddChannel( *chan_sr );
+```
+
+At this point, we ask HistFactory to actually go and check the histograms, do its magic and create The Likelihood Model. We also persist this likelihood model in XML format, for our afternoons of debugging.
+```C++
+    meas->CollectHistograms();
+    meas->PrintTree();
+    meas->PrintXML("xml/", meas->GetOutputFilePrefix());
+    MakeModelAndMeasurementFast(*meas);    
+```
+
+**Exercise**: add a control region.
+Hists:
+  * use similar commands as above, adding lines of code *before* calling `meas->CollectHistograms();`;
+  * in general, can use all the same names, but substituting "_sr" with "_cr";
+  * we still need to assign the POI factor to the signal sample in the CR;
+  * the input file names for the CR inputs are the same, but the histogram names have "HTj_CR" instead of "HTj" (also in the case of the JES systematic uncertainty).
+  
+
+## Simple fit
+
+This exercise shows how to perform a simple fit on the workspace produced earlier.
+
+It also shows various ways of printing and saving the results of the fit.
+
+Open the workspace file and extract the workspace object, 
+extract the `ModelConfig` from the workspace, 
+get the data we want to fit:
+```C++
+using namespace RooFit;
+using namespace RooStats;
+using namespace HistFactory;
+
+void SimpleFit(){
+    TFile *f = new TFile("ws/ws_minimal_combined_ws_model.root");
+    RooWorkspace *w = (RooWorkspace*)f->Get("combined");
+    ModelConfig *mc = (ModelConfig*)w->obj("ModelConfig");
+    RooBinnedData *dataset = w->data("obsData");
+}
+```
+
+Now perform a S+B fit:
+```C++
+    w->var("mu_signal")->setVal(0);
+    w->var("mu_signal")->setConstant(kFALSE);
+    w->pdf("simPdf")->fitTo(*dataset);
+```
+
+From the output above, we can find the fitted values of all the parameters (of interest and nuisance) and their uncertainties.
+
+Now, let's try to extract and print all and only the information we want, so that we could re-use it later:
+  * the fitted value of the POI, with its error;
+  * the fitted values of the NPs, with their errors (what we call the "pulls" and "constraints" of the NPs).
+  
+Let's extract the POI and print the fitted value and uncertainties (separately the up and down):
+```C++
+    RooRealVar *poi = (RooRealVar*)mc->GetParametersOfInterest()->first();
+    double mu_hat = poi->getVal();
+    double mu_hat_err_up = poi->getErrorHi();
+    double mu_hat_err_down = poi->getErrorLo();
+
+    cout << setw(25);
+    cout << "POI =";
+    cout << Form(" %+.3f",mu_hat);
+    cout << Form(" %+.3f",mu_hat_err_up);
+    cout << " /";
+    cout << Form(" %+.3f",mu_hat_err_down);
+    cout << endl;
+```
+
+And now for all the NPs;
+```C++
+    for(auto np_tmp : *mc->GetNuisanceParameters()){
+        RooRealVar* np = (RooRealVar*)np_tmp;
+        
+        string np_name = np->GetName();
+        
+        double np_value = np->getVal();
+        double np_err_up = np->getErrorHi();
+        double np_err_down = np->getErrorLo();
+        
+        cout << setw(25);
+        cout << np_name << " =";
+        cout << Form(" %+.3f",np_value);
+        cout << Form(" %+.3f",np_err_up);
+        cout << " /";
+        cout << Form(" %+.3f",np_err_down);
+        cout << endl;
+    }
+```
+
+**Exercise**:
+
+Let's try to produce the results of a background-only fit, and compare the output with that of the nominal S+B fit. Hint: to perform a B-only fit, the easiest solution is to fix the POI (to what value?)
