@@ -912,7 +912,7 @@ void SimpleFit(){
     TFile *f = new TFile("ws/ws_minimal_combined_meas_model.root");
     RooWorkspace *w = (RooWorkspace*)f->Get("combined");
     ModelConfig *mc = (ModelConfig*)w->obj("ModelConfig");
-    RooBinnedData *dataset = w->data("obsData");
+    RooAbsData *dataset = w->data("obsData");
 }
 ```
 
