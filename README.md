@@ -889,9 +889,9 @@ At this point, we ask HistFactory to actually go and check the histograms, do it
 **Exercise**: add a control region.
 Hists:
   * use similar commands as above, adding lines of code *before* calling `meas->CollectHistograms();`;
-  * in general, can use all the same names, but substituting "_sr" with "_cr";
+  * in general, can use all the same names, but substituting `_sr` with `_cr`;
   * we still need to assign the POI factor to the signal sample in the CR;
-  * the input file names for the CR inputs are the same, but the histogram names have "HTj_CR" instead of "HTj" (also in the case of the JES systematic uncertainty).
+  * the input file names for the CR inputs are the same, but the histogram names have `"HTj_CR"` instead of `"HTj"` (also in the case of the JES systematic uncertainty - the histogram names are actually `HTj_CR_jesUp` and `HTj_CR_jesDown` in this case).
   
 
 ### Simple fit
