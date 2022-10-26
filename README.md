@@ -809,26 +809,24 @@ using namespace RooStats;
 using namespace HistFactory;
 
 void CreateSimpleWS(){
-    Measurement *meas = new Measurement("ws_minimal","ws_minimal");
+    Measurement *meas = new Measurement("meas","meas");
     
-    meas->SetOutputFilePrefix("ws/ICTPws_minimal");
-
-    meas->SetPOI("mu_ttH");
-    
+    meas->SetOutputFilePrefix("ws/ws_minimal");
+    meas->SetPOI("mu_signal");
     meas->SetExportOnly(true);
 }
 ```
 
-We also add the "luminosity" uncertainty here, which will affect all the signal and background samples:
+We want to remove the built-in "luminosity" uncertainty, so we set it to constant:
 ```C++
     meas->SetLumi(1.0);
-    meas->SetLumiRelErr(0.05);
+    meas->SetLumiRelErr(1.0);
+    meas->AddConstantParam("Lumi");
 ```
 
 We then follow this logic:
   * we first create a channel (corresponding to some set of statistically-independent data);
   * we tell HistFactory where (meaning: in which file, under which subdirectory path and more specifically in which histogram) to find the data for this channel;
-<!--   * we may indulge in specifying how uncertainties related to the limited MC statistics in signal/background histograms should be dealt with, in this channel; -->
   * we then add the samples which contribute to this channel, specifying where to find their nominal histograms, and which normalisation-only (AddOverallSys) and also-shape uncertainties (AddHistoSys) should be considered (keeping in mind that variations of any kind which share the same name are correlated);
   * we also add free parameters to fit for determining the normalisation of our signal (and sometimes background) samples;
   * we add each sample to the channel.
@@ -838,22 +836,21 @@ Create the channel:
     Channel *chan_sr = new Channel("SR");
 ```
 
-Set the data, set MC-stat uncertainty threshold to 5%:
+Set the data:
 ```C++
     chan_sr->SetData( "HTj", "ExampleInputs/data.root" );
-    chan_sr->SetStatErrorConfig(0.05, "Poisson");
 ```
 
 Add signal sample, adding the POI as normalization factor to it:
 ```C++
-    Sample *signal_sr = new Sample( "S", "HTj", "ExampleInputs/sig.root" );
+    Sample *signal_sr = new Sample( "signal_sr", "HTj", "ExampleInputs/sig.root" );
     signal_sr->AddNormFactor( "mu_signal", 1, -10, 10 );
 ```
 
 Add the background samples:
 ```C++
-    Sample *bkg1_sr = new Sample( "B1", "HTj", "ExampleInputs/bkg1.root" );
-    Sample *bkg2_sr = new Sample( "B2", "HTj", "ExampleInputs/bkg2.root" );
+    Sample *bkg1_sr = new Sample( "bkg1_sr", "HTj", "ExampleInputs/bkg1.root" );
+    Sample *bkg2_sr = new Sample( "bkg2_sr", "HTj", "ExampleInputs/bkg2.root" );
 ```
     
 Assign some simple systematic uncertainties.
@@ -897,7 +894,7 @@ Hists:
   * the input file names for the CR inputs are the same, but the histogram names have "HTj_CR" instead of "HTj" (also in the case of the JES systematic uncertainty).
   
 
-## Simple fit
+### Simple fit
 
 This exercise shows how to perform a simple fit on the workspace produced earlier.
 
@@ -912,7 +909,7 @@ using namespace RooStats;
 using namespace HistFactory;
 
 void SimpleFit(){
-    TFile *f = new TFile("ws/ws_minimal_combined_ws_model.root");
+    TFile *f = new TFile("ws/ws_minimal_combined_meas_model.root");
     RooWorkspace *w = (RooWorkspace*)f->Get("combined");
     ModelConfig *mc = (ModelConfig*)w->obj("ModelConfig");
     RooBinnedData *dataset = w->data("obsData");
@@ -969,6 +966,110 @@ And now for all the NPs;
     }
 ```
 
-**Exercise**:
+**Exercise 1**:
 
 Let's try to produce the results of a background-only fit, and compare the output with that of the nominal S+B fit. Hint: to perform a B-only fit, the easiest solution is to fix the POI (to what value?)
+
+**Exercise 2**:
+
+Let's now try to make a fit using Minos (hint: look at one of the previous part examples).
+
+**Exercise 3**:
+
+Finally, try to fit the "Asimov" dateset, i.e. pseudo-data set to be the same as the prediction in each bin (hint: in the workspace, there's another dataset saved...)
+
+
+### Systematic Impact
+
+**Method 1**: "nuisance parameter ranking"
+
+This part shows an example of a way to quantify the impact of each of the individual sources of systematic uncertainties, using the so-called "ranking plot" method. Each of the nuisance parameters is shifted up and down by its uncertainty, and then the fit is repeated. Then the impact of associated systematic is quoted as the resulting shift of the result of the fit (in terms of fitted value of the parameter of interest).
+
+We start from the following macro:
+```C++
+using namespace RooFit;
+using namespace RooStats;
+using namespace HistFactory;
+
+void Ranking(){
+    TFile *f = new TFile("ws/ws_minimal_combined_meas_model.root");
+    RooWorkspace *w = (RooWorkspace*)f->Get("combined");
+    RooAbsData *dataset = w->data("obsData");
+}
+```
+
+Then we get the ModelConfig and we extract from it the POI:
+```C++
+    ModelConfig *mc = (ModelConfig*)w->obj("ModelConfig");
+    RooRealVar *poi = (RooRealVar*)mc->GetParametersOfInterest()->first();
+```
+
+
+We then perform the nominal S+B fit to data (but forcing RooFit and Minuit to stay silent first), 
+and we extract and save the fitted value of our POI, as well as its uncertainty:
+```C++
+    RooMsgService::instance().setGlobalKillBelow(RooFit::FATAL);
+    RooAbsReal *nll = w->pdf("simPdf")->createNLL(*dataset,RooFit::PrintLevel(-1));
+    RooMinimizer m(*nll);
+    m.migrad();
+    m.hesse();
+    m.minos();
+    double mu_hat = poi->getVal();
+    double mu_hat_err_up = poi->getErrorHi();
+    double mu_hat_err_down = poi->getErrorLo();
+```
+
+Print the nominal fit result:
+```C++
+    cout << "Nominal fit:" << endl;
+    cout << "  POI =";
+    cout << Form(" %+.3f",mu_hat);
+    cout << Form(" %+.3f",mu_hat_err_up);
+    cout << " / ";
+    cout << Form(" %+.3f",mu_hat_err_down);
+    cout << endl;
+```
+
+At this point we save a snaphot:
+```C++
+    w->saveSnapshot("nominal_snapshot", *mc->GetPdf()->getParameters(dataset));
+```
+
+Now the main part, to be done as **exercise**:
+  * loop on all the nuisance parmeters (NPs) in the model (excluding the free-floating parameters, hence restricting to those named `alpha_*`
+  * save value and error (up/down) of each NP from the nominal fit
+  * for each NP, repeat the fit after fixing the NP to nominal value +/- its post-fit uncertainty (to get the "post-fit impact of this NP")
+  * for each NP, repeat the fit after fixing the NP to nominal value +/- 1 (to get the "pre-fit impact of this NP")
+  * to get the "impact", compare fitted values of POI with nominal fit result in each case
+  * take care of loading the snapshot we created before, prior to any new fit
+  * print everything in an ordered way
+
+Hints:
+  * to loop over the NPs, do something like this:
+```C++
+for(auto np_tmp : *mc->GetNuisanceParameters()){
+    RooRealVar* np = (RooRealVar*)np_tmp;
+    string np_name = np->GetName();
+```
+at this point, we need to check the name, and if it looks like `"alpha_*"` we should skip the parameter and move to the next one, so something like this:
+```C++
+    if(np_name.find("alpha_")==string::npos) continue;
+```
+  * **important:** better to load the save snapshot here!
+  * then we should save the fitted value (`getVal`) and the errors (`getErrorHi` and `getErrorLo`) of the parameter `np` into three `double` valriables, calling them `np_value`, `np_err_up` and `np_err_down`
+  * then load the snapshot (`"nominal_snapshot"`), set the value of `np` to `np_value + np_err_up`, set it to constant (`setConstant(true)`) and make a new fit (`w->pdf("simPdf")->fitTo(...`)
+  * after the fit is done (better if done silently), save the fitted value of mu: `double mu_hat_postfit_up = poi->getVal();`
+  * then repeat everything for post-fit down (so setting `np` to `np_value + np_err_down`), for prefit up (`np` set to `np_value + 1`) and down (`np` set to `np_value - 1`)
+  * finally, to pring everything, we can do something like this:
+```C++
+    cout << "  Pre-fit  impact = ";
+    cout << Form("%+.3f",mu_hat_prefit_up - mu_hat);
+    cout << " / ";
+    cout << Form("%+.3f",mu_hat_prefit_down - mu_hat);
+    cout << endl;
+    cout << "  Post-fit impact = ";
+    cout << Form("%+.3f",mu_hat_postfit_up - mu_hat);
+    cout << " / ";
+    cout << Form("%+.3f",mu_hat_postfit_down - mu_hat);
+    cout << endl;
+```
