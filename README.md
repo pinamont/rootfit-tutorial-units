@@ -459,7 +459,7 @@ Additional cosmetics to make your plot nicer:
     xframe1->SetTitle("Fit to B-only data");
     xframe1->SetMinimum(10);
     xframe1->SetMaximum(1e3);
-    c->SetLogy();
+    gPad->SetLogy();
 ```
   * can add a legend to each plot, generated automatically:
 ```C++
@@ -1004,13 +1004,13 @@ Then we get the ModelConfig and we extract from it the POI:
     RooRealVar *poi = (RooRealVar*)mc->GetParametersOfInterest()->first();
 ```
 
-
 We then perform the nominal S+B fit to data (but forcing RooFit and Minuit to stay silent first), 
-and we extract and save the fitted value of our POI, as well as its uncertainty:
+and we extract and save the fitted value of our POI, as well as its uncertainty (using Minos and trying to kill all the automatic terminal output from RooFit and Minuit):
 ```C++
     RooMsgService::instance().setGlobalKillBelow(RooFit::FATAL);
     RooAbsReal *nll = w->pdf("simPdf")->createNLL(*dataset,RooFit::PrintLevel(-1));
     RooMinimizer m(*nll);
+    m.setPrintLevel(-1);
     m.migrad();
     m.hesse();
     m.minos();
@@ -1019,20 +1019,22 @@ and we extract and save the fitted value of our POI, as well as its uncertainty:
     double mu_hat_err_down = poi->getErrorLo();
 ```
 
-Print the nominal fit result:
-```C++
-    cout << "Nominal fit:" << endl;
-    cout << "  POI =";
-    cout << Form(" %+.3f",mu_hat);
-    cout << Form(" %+.3f",mu_hat_err_up);
-    cout << " / ";
-    cout << Form(" %+.3f",mu_hat_err_down);
-    cout << endl;
-```
-
-At this point we save a snaphot:
+Now don't forget to save a snaphot (e.g. named "nominal_snapshot").
 ```C++
     w->saveSnapshot("nominal_snapshot", *mc->GetPdf()->getParameters(dataset));
+```
+
+Then print the nominal fit result:
+```C++
+    cout << "--------------------------------------------------------" << endl;
+    cout << "Nominal fit:" << endl;
+    cout << setw(13);
+    cout << poi->GetName() << " = ";
+    cout << Form("%+.3f ",mu_hat);
+    cout << Form("%+.3f",mu_hat_err_up);
+    cout << " / ";
+    cout << Form("%+.3f",mu_hat_err_down);
+    cout << endl;
 ```
 
 Now the main part, to be done as **exercise**:
@@ -1045,6 +1047,12 @@ Now the main part, to be done as **exercise**:
   * print everything in an ordered way
 
 Hints:
+  * before the loop, in order to have a nice table printed, add these lines:
+```C++
+    cout << "--------------------------------------------------------" << endl;
+    cout << "NP Ranking:" << endl;
+    cout << "             NP name   Pre-fit impact    Post-fit impact" << endl; 
+```
   * to loop over the NPs, do something like this:
 ```C++
 for(auto np_tmp : *mc->GetNuisanceParameters()){
@@ -1055,21 +1063,177 @@ at this point, we need to check the name, and if it looks like `"alpha_*"` we sh
 ```C++
     if(np_name.find("alpha_")==string::npos) continue;
 ```
-  * **important:** better to load the save snapshot here!
+  * **important:** better to load the saved snapshot inside the "for" loop!
   * then we should save the fitted value (`getVal`) and the errors (`getErrorHi` and `getErrorLo`) of the parameter `np` into three `double` valriables, calling them `np_value`, `np_err_up` and `np_err_down`
-  * then load the snapshot (`"nominal_snapshot"`), set the value of `np` to `np_value + np_err_up`, set it to constant (`setConstant(true)`) and make a new fit (`w->pdf("simPdf")->fitTo(...`)
-  * after the fit is done (better if done silently), save the fitted value of mu: `double mu_hat_postfit_up = poi->getVal();`
+  * load the snapshot again (`"nominal_snapshot"`), set the value of `np` to `np_value + np_err_up`, set it to constant (`setConstant(true)`) and make a new fit (no need to use Minos here, so `w->pdf("simPdf")->fitTo(...`, with `RooFit::PrintLevel(-1)` as one of the options)
+  * after the fit is done, save the fitted value of mu: `double mu_hat_postfit_up = poi->getVal();`
   * then repeat everything for post-fit down (so setting `np` to `np_value + np_err_down`), for prefit up (`np` set to `np_value + 1`) and down (`np` set to `np_value - 1`)
-  * finally, to pring everything, we can do something like this:
+  * don't forget to load the snaphot **before every fit**
+  * finally, to pring everything, do something like this:
 ```C++
-    cout << "  Pre-fit  impact = ";
-    cout << Form("%+.3f",mu_hat_prefit_up - mu_hat);
-    cout << " / ";
-    cout << Form("%+.3f",mu_hat_prefit_down - mu_hat);
+        cout << setw(20);
+        cout << np_name << "   ";
+        cout << Form("%+.3f",mu_hat_prefit_up - mu_hat);
+        cout << " / ";
+        cout << Form("%+.3f",mu_hat_prefit_down - mu_hat);
+        cout << "   ";
+        cout << Form("%+.3f",mu_hat_postfit_up - mu_hat);
+        cout << " / ";
+        cout << Form("%+.3f",mu_hat_postfit_down - mu_hat);
+        cout << endl;
+```
+  * as a final cosmetic touch, after the loop is over, close the printed table:
+```C++
+    cout << "--------------------------------------------------------" << endl;
     cout << endl;
-    cout << "  Post-fit impact = ";
-    cout << Form("%+.3f",mu_hat_postfit_up - mu_hat);
+```
+
+
+**Method 2**: "grouped nuisance parameter impact"
+
+This part shows an example of a way to quantify the impact of systematic uncertainties, by splitting the statisical component and a number of systematic categories. The method used is the so-called Grouped Impact. It consists in fixing a number of nuisance parameters to their post-fit values and perform fits with each group fixed, and then extracting the impact of each group by comparing the resulting total uncertainty on the parameter of interest with the one from the nominal fit.
+
+We start from the following macro:
+```C++
+void GroupedImpact(){
+    TFile *f = new TFile("ws/ws_minimal_combined_meas_model.root");
+    RooWorkspace *w = (RooWorkspace*)f->Get("combined");
+    RooAbsData *dataset = w->data("obsData");
+
+    ModelConfig *mc = (ModelConfig*)w->obj("ModelConfig");
+    RooRealVar *poi = (RooRealVar*)mc->GetParametersOfInterest()->first();
+
+    RooMsgService::instance().setGlobalKillBelow(RooFit::FATAL);
+    w->pdf("simPdf")->fitTo(*dataset,RooFit::PrintLevel(-1));
+    w->saveSnapshot("nominal_snapshot", *mc->GetPdf()->getParameters(dataset));
+
+    double mu_hat = poi->getVal();
+    double mu_hat_err_up = poi->getErrorHi();
+    double mu_hat_err_down = poi->getErrorLo();
+    
+    cout << "--------------------------------------" << endl;
+    cout << "Nominal fit:" << endl;
+    cout << setw(13);
+    cout << poi->GetName() << " = ";
+    cout << Form("%+.3f ",mu_hat);
+    cout << Form("%+.3f",mu_hat_err_up);
     cout << " / ";
-    cout << Form("%+.3f",mu_hat_postfit_down - mu_hat);
+    cout << Form("%+.3f",mu_hat_err_down);
     cout << endl;
+}
+```
+
+The code for the moment is just loading the workspace and performing the nominal fit, printing the results.
+
+Now, let's compute the statistical uncertainty. To do it, we fix all the nuisance parameters:
+```C++
+    for(auto np_tmp : *mc->GetNuisanceParameters()){
+        RooRealVar* np = (RooRealVar*)np_tmp;
+        np->setConstant(true);
+    }
+```
+and then we **redo the fit**. 
+Notice that the NPs got fixed to their post-fit values, i.e. their current values. 
+After this new fit, we need to store the error (which will be the stat-only error):
+```C++
+    double statUnc_up = poi->getErrorHi();
+```
+(as **exercise**, add a line for `statUnc_down`), 
+and we can also compute the systematic error:
+```C++
+    double systUnc_up = sqrt(mu_hat_err_up*mu_hat_err_up - statUnc_up*statUnc_up);
+```
+(again, add a line for `systUnc_down`).
+We can then start to print our table, and fill it with what we have so far:
+```C++
+    cout << "--------------------------------------" << endl;
+    cout << "Grouped Impact Table:" << endl;
+    
+    cout << setw(23);
+    cout << "Stat. uncertainty = ";
+    cout << Form("%+.3f",statUnc_up);
+    cout << " / ";
+    cout << Form("%+.3f",statUnc_down);
+    cout << endl;
+
+    cout << setw(23);
+    cout << "Total systematics = ";
+    cout << Form("%+.3f",systUnc_up);
+    cout << " / ";
+    cout << Form("%+.3f",systUnc_down);
+    cout << endl;
+```
+
+Finally, let's loop again over the NPs, and add a line to the table for the impact of each of the systematics:
+```C++
+    for(auto np_tmp : *mc->GetNuisanceParameters()){
+        w->loadSnapshot("nominal_snapshot");
+        RooRealVar* np = (RooRealVar*)np_tmp;
+        string np_name = np->GetName();
+        if(np_name.find("alpha_")==string::npos) continue;
+        
+        np->setConstant(true);
+```
+then **do a fit**, save the errors up and down to variables called `mu_hat_err_up_tmp` and `mu_hat_err_down_tmp`,
+and finally get `npUnc_up` and `npUnc_down` as the difference in quadrature between the total errors (up and down) and these reduced errors. 
+
+Then print them in a nice way and close the loop:
+```C++
+        cout << setw(20);
+        cout << np_name << " = ";
+        cout << Form("%+.3f",npUnc_up);
+        cout << " / ";
+        cout << Form("%+.3f",npUnc_down);
+        cout << endl;
+    }
+    cout << "--------------------------------------" << endl;
+    cout << endl;
+```
+
+**Exercise 1**: obtain the same table, but using Minos for all the fits.
+
+**Exercise 2**: obtain the same table, using Asimov data and compare.
+
+
+### Discovery significance
+
+The last exercise is about getting a discovery significance, based on the p0-value calculation. 
+
+The p-value calculation is very simple (see https://arxiv.org/pdf/1007.1727.pdf).
+It's given by: $q_0 = 2($NLL$_0 - $NLL$)$, where NLL$_0$ is the negative log-likelihood calculated when the POI is set to zero (background-only hypothesis), and NLL is the value when also the POI is free to float.
+
+Let's load the workspace information as usual:
+```C++
+using namespace RooFit;
+using namespace RooStats;
+using namespace HistFactory;
+
+void Significance(){
+    TFile *f = new TFile("ws/ws_minimal_combined_meas_model.root");
+    RooWorkspace *w = (RooWorkspace*)f->Get("combined");
+    RooAbsData *dataset = w->data("obsData");
+
+    ModelConfig *mc = (ModelConfig*)w->obj("ModelConfig");
+    RooRealVar *poi = (RooRealVar*)mc->GetParametersOfInterest()->first();
+    RooMsgService::instance().setGlobalKillBelow(RooFit::FATAL);
+    w->saveSnapshot("prefit_snapshot", *mc->GetPdf()->getParameters(dataset));
+}
+```
+
+Now we need to:
+  * perform two fits, a normal one and one where we fix the POI to 0 (B-only fit, or conditional fit);
+  * each time we save the results in a `RooFitResult` object;
+  * from each of the two `RooFitResult` objects we extract the minimum NLL, e.g.:
+```C++
+    double nll = r->minNll();
+```
+  * we then extract the p-value from the difference between the two NLL values:
+```C++
+    float p0 = TMath::Prob(2*(nll0 - nll),1);
+    cout << "p-value      = " << p0 << endl;
+```
+  * we finally turn `p0` to a number of Gaussian standard deviations (which we call "Significance"):
+```C++
+    float Z = RooStats::PValueToSignificance(p0);
+    cout << "Significance = " << Z << endl;
 ```
