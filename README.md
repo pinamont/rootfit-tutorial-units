@@ -12,11 +12,11 @@ Dr. Michele Pinamonti
 3. [RooFit basics](#basics)
 4. [Advanced examples](#advanced)
 5. [Profile Likelihood fit and HistFactory](#histfactory)
-  * [Getting started](#start)
-  * [Simple workspace creation](#ws)
-  * [Simple fit](#fit)
-  * [Systematic Impact](#syst)
-  * [Discovery significance](#sig)
+    1. [Getting started](#start)
+    1. [Simple workspace creation](#ws)
+    1. [Simple fit](#fit)
+    1. [Systematic Impact](#syst)
+    1. [Discovery significance](#sig)
 
 ---
 
