@@ -12,6 +12,11 @@ Dr. Michele Pinamonti
 3. [RooFit basics](#basics)
 4. [Advanced examples](#advanced)
 5. [Profile Likelihood fit and HistFactory](#histfactory)
+  * [Getting started](#start)
+  * [Simple workspace creation](#ws)
+  * [Simple fit](#fit)
+  * [Systematic Impact](#syst)
+  * [Discovery significance](#sig)
 
 ---
 
@@ -770,7 +775,7 @@ Are we getting the same results?
 This new section is about the usage of HistFactory.
 
 
-### Getting started
+### Getting started <a name="start"></a>
 
 Let's first create two directories, to store the workspace and the xml steering files created by HistFactory:
 ```bash
@@ -787,7 +792,10 @@ macro CreateHistograms.C
 A directory `ExampleInputs` should have been created, with a number of root files inside.
 
 
-### Simple workspace creation
+
+---
+
+### Simple workspace creation <a name="ws"></a>
 
 We will create a simple example workspace based on histogram inputs (that we will create with a dummy ROOT macro).
 
@@ -894,7 +902,10 @@ Hists:
   * the input file names for the CR inputs are the same, but the histogram names have `"HTj_CR"` instead of `"HTj"` (also in the case of the JES systematic uncertainty - the histogram names are actually `HTj_CR_jesUp` and `HTj_CR_jesDown` in this case).
   
 
-### Simple fit
+
+---
+
+### Simple fit <a name="fit"></a>
 
 This exercise shows how to perform a simple fit on the workspace produced earlier.
 
@@ -979,7 +990,10 @@ Let's now try to make a fit using Minos (hint: look at one of the previous part 
 Finally, try to fit the "Asimov" dateset, i.e. pseudo-data set to be the same as the prediction in each bin (hint: in the workspace, there's another dataset saved...)
 
 
-### Systematic Impact
+
+---
+
+### Systematic Impact <a name="syst"></a>
 
 **Method 1**: "nuisance parameter ranking"
 
@@ -1195,7 +1209,9 @@ Then print them in a nice way and close the loop:
 **Exercise 2**: obtain the same table, using Asimov data and compare.
 
 
-### Discovery significance
+---
+
+### Discovery significance <a name="setup"></a>
 
 The last exercise is about getting a discovery significance, based on the p0-value calculation. 
 
