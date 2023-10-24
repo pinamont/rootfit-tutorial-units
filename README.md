@@ -436,7 +436,7 @@ void MyExample_FitModel(){
 Now as exercise:
   * create two `RooPlot` objects (called `xframe1` and `xframe2`), one to store the B-only data and fit, one for the S+B data and fit (from the same variable, as usual calling `w->var("x")->frame();`;
   * load the two datasets from the workspace (e.g. `w->data("data_Bonly")`) and plot each of them in the proper `RooPlot`;
-  * plot each of the plots to a separate sub-canvas (hint: call `c->cd(1)` before calling `xframe1->Draw()` and `c->cd(1)` before calling `xframe2->Draw()`;
+  * plot each of the plots to a separate sub-canvas (hint: call `c->cd(1)` before calling `xframe1->Draw()` and `c->cd(2)` before calling `xframe2->Draw()`;
   * perform 2 fits:
 
 1. the B-only data should be fitted with a B-only model, i.e. by fixing all the signal parameters (and its normalization to zero), e.g.:
