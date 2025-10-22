@@ -227,7 +227,7 @@ RooRealVar nsig("nsig","N signal events",100,0,1000);
 ```C++
 RooExtendPdf extModel("extModel","signal extended model",model,nsig);
 ```
-  * then we can re-do all the steps above, but of course replacing `model` with `modelExt`;
+  * then we can re-do all the steps above, but of course replacing `model` with `extModel`;
 
 Do we get our normalization parameter result now? 
 
