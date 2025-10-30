@@ -1216,7 +1216,7 @@ Then print them in a nice way and close the loop:
 The last exercise is about getting a discovery significance, based on the p0-value calculation. 
 
 The p-value calculation is very simple (see https://arxiv.org/pdf/1007.1727.pdf).
-It's given by: $q_0 = 2($NLL$_0 - $NLL$)$, where NLL$_0$ is the negative log-likelihood calculated when the POI is set to zero (background-only hypothesis), and NLL is the value when also the POI is free to float.
+It's given by: $q_0 = 2(NLL_0 - NLL)$, where $NLL_0$ is the negative log-likelihood calculated when the POI is set to zero (background-only hypothesis), and NLL is the value when also the POI is free to float.
 
 Let's load the workspace information as usual:
 ```C++
