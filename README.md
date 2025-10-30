@@ -1109,6 +1109,10 @@ This part shows an example of a way to quantify the impact of systematic uncerta
 
 We start from the following macro:
 ```C++
+using namespace RooFit;
+using namespace RooStats;
+using namespace HistFactory;
+
 void GroupedImpact(){
     TFile *f = new TFile("ws/ws_minimal_combined_meas_model.root");
     RooWorkspace *w = (RooWorkspace*)f->Get("combined");
