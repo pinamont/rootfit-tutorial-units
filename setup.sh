@@ -2,7 +2,10 @@
 # Run the script every time you open a new terminal, just with:
 #   source setup.sh
 
-source /cvmfs/sft.cern.ch/lcg/app/releases/ROOT/6.20.04/x86_64-centos7-gcc48-opt/bin/thisroot.sh 
+# Use this line in case of a CentOS7 machine:
+# source /cvmfs/sft.cern.ch/lcg/app/releases/ROOT/6.20.04/x86_64-centos7-gcc48-opt/bin/thisroot.sh 
+# or this one in case of AlmaLinux9:
+source /cvmfs/sft.cern.ch/lcg/app/releases/ROOT/6.36.10/x86_64-almalinux9.7-gcc115-opt/bin/thisroot.sh
 
 # This line is setting an alias to conveniently run a ROOT macro.
 # To run a ROOT macro saved in a .C file, juts use the command:
