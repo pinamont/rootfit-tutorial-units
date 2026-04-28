@@ -39,7 +39,7 @@ Alternatively, without cloning the git project:
   * create a directory `RooFitTutorial`
   * create a `setup.sh` text file inside the directory with the following content:
 ```
-source /cvmfs/sft.cern.ch/lcg/app/releases/ROOT/6.20.04/x86_64-centos7-gcc48-opt/bin/thisroot.sh 
+source /cvmfs/sft.cern.ch/lcg/app/releases/ROOT/6.36.10/x86_64-almalinux9.7-gcc115-opt/bin/thisroot.sh
 alias macro="root -l -b -q"
 ```
   * from inside the directory `RooFitTutorial` run the setup script:
