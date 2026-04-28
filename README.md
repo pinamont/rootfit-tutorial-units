@@ -155,7 +155,7 @@ Now, let's add the same items as before.
 Let's create a histogram.
 In RooFit, given the model that we defined, this is as simple as this:
 ```C++
-RooDataHist data(*model.generateBinned(x,100));
+RooDataHist data_binned(*model.generateBinned(x,100));
 ```
 Notice that we didn't specify anywhere how many bins to have, so a default (and actually non-optimal) number is taken. 
 The simplest way to do it, is to add this line before creating the binned dataset:
@@ -164,13 +164,13 @@ x.setBins(10);
 ```
 To see the histogram (the binned dataset) together with the function (the model), just add the `RooDataHist` object we create to the `RooPlot` object:
 ```C++
-data.plotOn(xframe);
+data_binned.plotOn(xframe);
 ```
 
 Let's move to the fit part.
 The simplest way to do a fit of this PDF to the binned dataset is the following:
 ```C++
-model.fitTo(data);
+model.fitTo(data_binned);
 ```
 
 
@@ -188,7 +188,7 @@ Alternatively, one can call the individual steps of the fit procedure individual
 
   * create a negative-log-likelihood object, from the model applied to the data (remind: `RooAbsReal` is a generic "function" in the RooFit language):
 ```C++
-RooAbsReal *nll = model.createNLL(data);
+RooAbsReal *nll = model.createNLL(data_binned);
 RooMinimizer m(*nll);
 ```
   * call the minimization process ("Migrad"):
@@ -239,7 +239,7 @@ We actually told RooFit to generate a toy data-set of exactly 100 data points.
 We can tell him to instead fluctuate also the total number of generated events, which is what we actually expect to happen in real collision data when collecting a certain amount of integrated luminosity instead of saying "we collect N data events". 
 To do it, let's add an option to the `generateBinned` method:
 ```C++
-RooDataHist data(*extModel.generateBinned(x,100,RooFit::Extended(true)));
+RooDataHist data_binned(*extModel.generateBinned(x,100,RooFit::Extended(true)));
 ```
 
 Now let's try to run the fit again, and look at the fitted value of `nsig`.
@@ -251,7 +251,7 @@ It is often useful to store the results of the fit in a proper `RooFit` objetc, 
 To do it, when performing the fit, one needs to add the option `Save(true)`, and the fit method will return a pointer to the `FitResult` object.
 We can add to any of the previous macros (for instance the latest one) the following line:
 ```C++
-RooFitResult *r = extModel.fitTo(data,RooFit::Save(true));
+RooFitResult *r = extModel.fitTo(data_binned,RooFit::Save(true));
 ```
 and then print the content of it at the end of the macro:
 ```C++
@@ -273,12 +273,12 @@ void HelloWorld_Unbinned(){
     TCanvas *c = new TCanvas("c","c",800,600);
     RooPlot *xframe = x.frame();
     
-    RooDataSet data(*model.generate(x,100));
-    data.plotOn(xframe);
+    RooDataSet data_unbinned(*model.generate(x,100));
+    data_unbinned.plotOn(xframe);
     
     model.plotOn(xframe);
     
-    model.fitTo(data);
+    model.fitTo(data_unbinned);
     
     xframe->Draw();
     c->SaveAs("HelloWorld.png");
@@ -288,9 +288,9 @@ One can compare the results with the binned case.
 
 One can also inspect the generated toy data one by one:
 ```C++
-data.Print("V");
-for(int i=0;i<data.numEntries();i++){
-    data.get(i)->Print("V");
+data_unbinned.Print("V");
+for(int i=0;i<data_unbinned.numEntries();i++){
+    data_unbinned.get(i)->Print("V");
 }
 ```
 
@@ -303,8 +303,8 @@ void HelloWorld_Factory(){
   RooWorkspace *w = new RooWorkspace("w");
   w->factory("Gaussian::model(x[-10,10],mean[0.00027,-10,10],sigma[5.2794,0,10])");
   w->var("x")->setBins(10);
-  RooDataHist *data = w->pdf("model")->generateBinned(*w->var("x"),100);
-  w->pdf("model")->fitTo(*data);
+  RooDataHist *data_binned = w->pdf("model")->generateBinned(*w->var("x"),100);
+  w->pdf("model")->fitTo(*data_binned);
 }
 ```
 
@@ -313,7 +313,7 @@ For completeness, this simple macro doesn't contain the graphical part, but you 
 One can then add lines to save the workspace with any additional RooFit content, and check content. 
 
 ```
-w->import(*data,RooFit::Rename("data"));
+w->import(*data_binned,RooFit::Rename("data"));
 w->writeToFile("ws.root");
 ```
 
@@ -598,7 +598,7 @@ and plot them (each on the proper `RooPlot`).
 
 Then we should combine them into a single dataset:
 ```C++
-    RooDataHist data("data","data",x, 
+    RooDataHist data_binned("data","data",x, 
                     RooFit::Index(channel), 
                     RooFit::Import({{"SR", data_SR}, {"CR", data_CR}}));
 ```
@@ -614,7 +614,7 @@ At this point, we can save the plots as a snaphot of the "prefit" situation:
 
 
 Now let's move to the fit. 
-You can simply call `model.fitTo(data)` but you need to save the results into a `FitResult` object, called `r`.
+You can simply call `model.fitTo(data_binned)` but you need to save the results into a `FitResult` object, called `r`.
 
 What do we get?
 Which parameters got fitted?
@@ -715,14 +715,14 @@ void Example_NPs(){
     RooGaussian model("model","signal pdf",x,mean,sigma);
     
     x.setBins(10);
-    RooDataHist data(*model.generateBinned(x,100));
+    RooDataHist data_binned(*model.generateBinned(x,100));
     
-    w->import(data);
+    w->import(data_binned);
     w->import(model);
     
     w->saveSnapshot("Vanilla",w->allVars());
     
-    RooFitResult *r = model.fitTo(data,RooFit::Save(),
+    RooFitResult *r = model.fitTo(data_binned,RooFit::Save(),
                                   RooFit::PrintLevel(-1),RooFit::PrintEvalErrors(-1));
     r->Print();
 }
